@@ -80,12 +80,12 @@ Current time: {time}
 2. Reflect and critique your answer. Be severe to maximize improvement.
 3. Recommend search queries to research information and improve your answer.""",
         ),
-        MessagesPlaceholder(variable_name="messages"), # prompt engineering technique to reuse this promt template => will also be used by the revisor node
+        MessagesPlaceholder(variable_name="messages"), # prompt engineering technique to reuse this promt template => will also be used by the revisor node => will need this for the revisor agent i.e. to revisit the chat history and critique
         ("system", "Answer the user's question above using the required format."),
     ]
 ).partial(
     time=lambda: datetime.datetime.now().isoformat(),
-)
+) # to populate already known placeholders. When we invokce this template we want to plug in here the current date. We use the lambda function to output the date with the ISO format
 
 ## prepare prompts before sending to LLM
 # take the actor prompt template and populate the first instruction field
@@ -101,8 +101,8 @@ first_responder = first_responder_prompt_template | llm.bind_tools(
 
 if __name__ == "__main__":
     human_message = HumanMessage(
-        content="Write about AI-Powered SOC / autonomous soc  problem domain,"
-        " list startups that do that and raised capital."
+        content="Give me advice on how to collect Pokemon cards TCG that will hopefully increase in value over time"
+        "Also my budget is max $1,000"
     )
     chain = (
         first_responder_prompt_template

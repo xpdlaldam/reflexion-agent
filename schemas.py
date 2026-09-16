@@ -1,9 +1,10 @@
-### the result of the file will hold for the output i.e. we define the output of how our LLM will return
+### the result of the file will hold all the schemas for the output we want i.e. we define the output of how our LLM will return. Structured output
 from typing import List
 
 from pydantic import BaseModel, Field
 
 
+## Reflection agent: critique
 class Reflection(BaseModel):
     missing: str = Field(description="Critique of what is missing.")
     superfluous: str = Field(description="Critique of what is superfluous")
