@@ -10,7 +10,7 @@ from langchain_core.output_parsers.openai_tools import (
     PydanticToolsParser,
 )
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder # holds all the history of agents
-from schemas import AnswerQuestion
+from schemas import AnswerQuestion, ReviseAnswer # import here whenever a new class is created in schemas.py
 from langchain_groq import ChatGroq
 
 # llm = ChatGroq(model="llama-3.3-70b-versatile") # don't hardcode
@@ -67,13 +67,13 @@ print(f"Using model: {model_id}")
 llm = ChatGroq(model=model_id)
 
 parser = JsonOutputToolsParser(return_id=True) # returns in json/dictionary
-parser_pydantic = PydanticToolsParser(tools=[AnswerQuestion]) # takes the response from the LLM and search for the function calling location and parse it and transform it into answer-question object => take the ansewr from the LLM and create an answer-question object which we can easily work with
+parser_pydantic = PydanticToolsParser(tools=[AnswerQuestion, ReviseAnswer]) # takes the response from the LLM and search for the function calling location and parse it and transform it into answer-question object => take the ansewr from the LLM and create an answer-question object which we can easily work with
 
 actor_prompt_template = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            """You are expert researcher.
+            """You are expert researcher of pokemon cards tcg.
 Current time: {time}
 
 1. {first_instruction}
@@ -99,10 +99,24 @@ first_responder = first_responder_prompt_template | llm.bind_tools(
     tool_choice="AnswerQuestion" # force the LLM to always use the AnswerQuestion tool => grounding the response to the object we want to receive (cool technique!)
 )
 
+# prompt template for revisor
+revise_instructions = """Revise your previous answer using the new information.
+    - You should use the previous critique to add important information to your answer.
+        - Include if you think it's better to collect other than team rocket set
+        - Add a "References" section to the bottom of your answer if you can find relevant links (which does not count towards the word limit). In form of:
+            - [1] https://example.com
+            - [2] https://example.com
+    - You should use the previous critique to remove superfluous information from your answer and make SURE it is not more than 250 words.
+"""
+
+revisor = actor_prompt_template.partial(
+    first_instruction=revise_instructions
+) | llm.bind_tools(tools=[ReviseAnswer], tool_choice="ReviseAnswer")
+
 if __name__ == "__main__":
     human_message = HumanMessage(
         content="Give me advice on how to collect Pokemon cards TCG that will hopefully increase in value over time"
-        "Also my budget is max $1,000"
+        "I am interested in collecting team rocket set from 2000. Do you think this will go up in value over time?"
     )
     chain = (
         first_responder_prompt_template
