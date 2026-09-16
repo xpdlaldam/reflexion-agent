@@ -2,6 +2,7 @@ import argparse
 import datetime
 import html
 import os
+import subprocess
 import tempfile
 import webbrowser
 from pathlib import Path
@@ -23,6 +24,8 @@ from langchain_core.tools import tool
 
 
 def find_tool_calling_model(candidates=None, verbose=True):
+    if verbose:
+        print("Checking available Groq models...", flush=True)
     client = Groq(api_key=os.environ["GROQ_API_KEY"])
     available = [m.id for m in client.models.list().data]
 
@@ -48,14 +51,16 @@ def find_tool_calling_model(candidates=None, verbose=True):
     for model_id in to_test:
         try:
             llm = ChatGroq(model=model_id)
+            if verbose:
+                print(f"Testing tool calling: {model_id}", flush=True)
             llm.bind_tools([probe]).invoke("test")
             if verbose:
-                print(f"✓ Tool calling works: {model_id}")
+                print(f"Tool calling works: {model_id}", flush=True)
             return model_id
         except BadRequestError as e:
             if "tool" in str(e).lower():
                 if verbose:
-                    print(f"✗ No tool calling: {model_id}")
+                    print(f"No tool calling: {model_id}", flush=True)
                 continue
             raise  # re-raise if it's a different error
 
@@ -154,7 +159,11 @@ def write_html(result, model_id, output_path=None, open_browser=False):
     path = Path(output_path) if output_path else Path(tempfile.gettempdir()) / "reflexion-agent.html"
     path.write_text(format_html(result, model_id), encoding="utf-8")
     if open_browser:
-        webbrowser.open(path.resolve().as_uri())
+        uri = path.resolve().as_uri()
+        if os.name == "posix" and os.uname().sysname == "Darwin":
+            subprocess.run(["open", str(path.resolve())], check=True)
+        elif not webbrowser.open(uri):
+            raise RuntimeError(f"Could not open the HTML report automatically: {uri}")
     return path
 
 if __name__ == "__main__":
@@ -167,12 +176,16 @@ if __name__ == "__main__":
         content="Give me advice on how to collect Pokemon cards TCG that will hopefully increase in value over time"
         "Also my budget is max $1,000"
     )
+    print("Starting Reflexion Agent...", flush=True)
     model_id = find_tool_calling_model()
-    print(f"Using model: {model_id}\n")
+    print(f"Using model: {model_id}", flush=True)
     chain = build_chain(model_id)
+    print("Waiting for the model response...", flush=True)
     res = chain.invoke(input={"messages": [human_message]})
     print(format_terminal(res, model_id))
 
     if args.html or args.open:
         path = write_html(res, model_id, args.html, args.open)
-        print(f"HTML report: {path}")
+        print(f"HTML report saved to: {path}", flush=True)
+        if args.open:
+            print("Opened the HTML report in your default browser.", flush=True)
