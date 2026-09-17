@@ -30,12 +30,10 @@ def find_tool_calling_model(candidates=None):
 
     # Priority order based on your available models — most likely to support tools
     priority = candidates or [
-        "openai/gpt-oss-120b",
+        # "openai/gpt-oss-120b",
         "openai/gpt-oss-20b",
-        "qwen/qwen3.6-27b",
-        "qwen/qwen3.8-27b",
-        "groq/compound",
-        "groq/compound-mini",
+        # "groq/compound", # groq does not support tool calling
+        # "groq/compound-mini", # groq does not support tool calling
     ]
 
     # Only test models actually in your account
@@ -90,7 +88,7 @@ Current time: {time}
 ## prepare prompts before sending to LLM
 # take the actor prompt template and populate the first instruction field
 first_responder_prompt_template = actor_prompt_template.partial(
-    first_instruction="Provide a detailed ~250 word answer."
+    first_instruction="Provide a detailed ~50 word answer."
 )
 
 # first responder chain
@@ -106,7 +104,7 @@ revise_instructions = """Revise your previous answer using the new information.
         - Add a "References" section to the bottom of your answer if you can find relevant links (which does not count towards the word limit). In form of:
             - [1] https://example.com
             - [2] https://example.com
-    - You should use the previous critique to remove superfluous information from your answer and make SURE it is not more than 250 words.
+    - You should use the previous critique to remove superfluous information from your answer and make SURE it is not more than 8000 tokens.
 """
 
 revisor = actor_prompt_template.partial(
